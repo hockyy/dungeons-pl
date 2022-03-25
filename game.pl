@@ -1,6 +1,6 @@
 :- use_module(library(clpfd)).
 
-peta([[0, 0, 0],[0, 0, 0]]).
+peta([[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]]).
 n(Self) :- peta(A), length(A, Self).
 m(Self) :- peta([Head | _]), length(Head, Self).
 
