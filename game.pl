@@ -1,6 +1,16 @@
 :- use_module(library(clpfd)).
+peta([
+    [0,0,0,x,x,x,0,x,x,0],
+    [0,x,0,x,0,0,0,0,0,0],
+    [0,x,0,0,0,x,0,x,x,0],
+    [0,x,x,0,x,x,0,x,x,0],
+    [0,0,0,0,0,0,0,0,0,0],
+    [x,0,x,x,x,x,0,x,x,0],
+    [0,0,0,x,0,0,0,0,0,0]]).
 
-peta([[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]]).
+people([3,3,2,2,2,1,1,1,1]).
+
+p(Self) :- people(People), length(People, Self).
 n(Self) :- peta(A), length(A, Self).
 m(Self) :- peta([Head | _]), length(Head, Self).
 
@@ -24,28 +34,31 @@ get_peta(X,Y,Element) :-
     peta(Peta),
     nth2d(Peta,X,Y,Element).
 
-print_peta(X,Y,Position):-
+print_peta(X,Y,Position,PeopleValue):-
     \+ is_in_grid(X,Y)->  !;
     % if
     (([X, Y] = Position) -> 
         % then
-        (write(1));
+        (ansi_format([bold,fg(green)],PeopleValue,[]));
         % else
         (get_peta(X, Y, Element),
-        write(Element))
+        (Element = x -> Color = red ; Color = black), 
+        ansi_format([bold,fg(Color)],'~w',[Element]))
     ),
 
     move_next([X,Y], right,[Nx,Ny]),
     ((is_in_grid(Nx,Ny))->
-        (print_peta(Nx,Ny,Position));
+        (print_peta(Nx,Ny,Position,PeopleValue));
 
         (NextX is X+1,
-        write('\n'),
-        print_peta(NextX,0,Position))
+        format('~n',[]),
+        print_peta(NextX,0,Position,PeopleValue))
     ).
 
-print_peta(Position) :-
-    print_peta(0,0,Position).
+print_peta(Position, PeopleIndex) :-
+    people(People),
+    nth0(PeopleIndex, People, PeopleValue),
+    print_peta(0,0,Position, PeopleValue).
     
 read_key([Code|Codes]) :-
     get_single_char(Code),
@@ -60,6 +73,7 @@ codes_keyatom([115],down)  :- !.
 codes_keyatom([100],right) :- !.
 codes_keyatom([97],left)  :- !.
 codes_keyatom([98], stop) :- !.
+codes_keyatom([99], putPeople) :- !.
 codes_keyatom(_, unknown) :- !.
 
 direction(right,[0,1]).
@@ -77,13 +91,26 @@ is_in_grid(X, Y) :-
     0 =< X, 0 =< Y,
     X < N, Y < M.
 
-go(X,Y) :-
+is_not_boulder_grid(X, Y) :-
+    peta(Peta),
+    nth2d(Peta, X, Y, 0).
+
+go(X,Y,PeopleIndex) :-
     tty_clear,
-    print_peta([X,Y]),
+    p(PeopleCount),
+    (PeopleIndex = PeopleCount) -> (!);
+    print_peta([X,Y], PeopleIndex),
     read_keyatom(Key),
-    (Key = stop -> !;
-        move_next([X,Y], Key, [NextX,NextY]),
-        is_in_grid(NextX,NextY)-> go(NextX,NextY);go(X,Y)
+    ((Key = stop) -> !;(
+        ((Key = putPeople) -> (
+            NextIndex #= PeopleIndex + 1,
+            go(X,Y,NextIndex)
+            );(
+            move_next([X,Y], Key, [NextX,NextY]),
+            (is_in_grid(NextX,NextY), is_not_boulder_grid(NextX,NextY))-> go(NextX,NextY,PeopleIndex);go(X,Y,PeopleIndex)
+            )
+        )
+        )
     ).
 
-:- go(0,0).
+:- go(0,0,0).

@@ -4,6 +4,18 @@
 
 <img src="README.assets/256.png" alt="img" style="zoom: 200%;" />
 
+```
+peta([[0,0,0,x,x,x,0,x,x,0],
+[0,x,0,x,0,0,0,0,0,0],
+[0,x,0,0,0,x,0,x,x,0],
+[0,x,x,0,x,x,0,x,x,0],
+[0,0,0,0,0,0,0,0,0,0],
+[x,0,x,x,x,x,0,x,x,0],
+[0,0,0,x,0,0,0,0,0,0]]).
+```
+
+
+
 You need to evacuate the neighborhood, and fast! Luckily, you were able to recruit nine friends to help you out:
 
 - Two whose voices carry for 3 squares.
