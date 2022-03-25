@@ -29,35 +29,36 @@ nth2d(List2D,X, Y, Element):-
     nth0(X, List2D, List1D),
     nth0(Y, List1D, Element).
 
-get_peta(X,Y,Element,Peta) :-
+get_peta(X,Y,Element) :-
+    peta(Peta),
     is_in_grid(X,Y),
     nth2d(Peta,X,Y,Element).
 
-print_peta(X,Y,Position,PeopleValue, Peta):-
+print_peta(X,Y,Position,PeopleValue, Flooded):-
     \+ is_in_grid(X,Y)->  !;
     % if
     (([X, Y] = Position) -> 
         % then
         (ansi_format([bold,fg(green)],PeopleValue,[]));
         % else
-        (get_peta(X, Y, Element, Peta),
+        (member([X,Y], Flooded) -> Element = f; get_peta(X, Y, Element)),
         (Element = x -> Color = red ; (Element = f -> Color = blue ; Color = black)), 
-        ansi_format([bold,fg(Color)],'~w',[Element]))
+        ansi_format([bold,fg(Color)],'~w',[Element])
     ),
 
     move_next([X,Y], right,[Nx,Ny]),
     ((is_in_grid(Nx,Ny))->
-        (print_peta(Nx,Ny,Position,PeopleValue,Peta));
+        (print_peta(Nx,Ny,Position,PeopleValue,Flooded));
 
         (NextX is X+1,
         format('~n',[]),
-        print_peta(NextX,0,Position,PeopleValue,Peta))
+        print_peta(NextX,0,Position,PeopleValue,Flooded))
     ).
 
-print_peta(Position, PeopleIndex, Peta) :-
+print_peta(Position, PeopleIndex, Flooded) :-
     people(People),
     nth0(PeopleIndex, People, PeopleValue),
-    print_peta(0,0,Position, PeopleValue, Peta).
+    print_peta(0,0,Position, PeopleValue, Flooded).
     
 read_key([Code|Codes]) :-
     get_single_char(Code),
@@ -95,38 +96,43 @@ is_not_boulder_grid(X, Y) :-
     nth2d(Peta, X, Y, Element),
     \+ Element = x.
 
-flood(X, Y, PeopleValue, Peta, NewPeta, Direction) :-
-    is_in_grid(X,Y), is_not_boulder_grid(X,Y) -> (
-        PeopleValue = 0 -> ! ;
-        move_next([X,Y], Direction, [NextX,NextY]),
+flood(X, Y, PeopleValue, Flooded, Res, Direction) :-
+    (is_in_grid(X,Y), is_not_boulder_grid(X,Y)) -> (
+        append(Flooded, [[X,Y]], NewFlooded), 
+        ((\+ PeopleValue = 0) ->
+        (move_next([X,Y], Direction, [NextX,NextY]),
         ReducePeopleValue #= PeopleValue - 1,
-        flood(NextX, NextY, ReducePeopleValue, Peta, NewPeta, Direction)
-    ) ; !.
+        flood(NextX, NextY, ReducePeopleValue, NewFlooded, Res, Direction)) ; (NewFlooded = Res, !))
+    ) ; (Flooded = Res).
 
-flood(X, Y, PeopleValue, Peta, NewPeta) :-
+flood(X, Y, PeopleValue, Flooded, NewFlooded) :-
     NewPeta = Peta,
-    maplist(flood(X, Y, PeopleValue, Peta, NewPeta), [up, down, right, left]).
+    flood(X, Y, PeopleValue, Flooded, NewFloodedUp, up),
+    flood(X, Y, PeopleValue, NewFloodedUp, NewFloodedDown, down),
+    flood(X, Y, PeopleValue, NewFloodedDown, NewFloodedRight, right),
+    flood(X, Y, PeopleValue, NewFloodedRight, NewFloodedLeft, left),
+    NewFlooded = NewFloodedLeft.
 
-
-go(X,Y,PeopleIndex, Peta) :-
+go(X,Y,PeopleIndex, Flooded) :-
     tty_clear,
     p(PeopleCount),
     (PeopleIndex = PeopleCount) -> (!);
-    print_peta([X,Y], PeopleIndex, Peta),
+    print_peta([X,Y], PeopleIndex, Flooded),
     read_keyatom(Key),
     ((Key = stop) -> !;(
         ((Key = putPeople) -> (
             people(People),
             nth0(PeopleIndex, People, PeopleValue),
-            flood(X,Y,PeopleValue, Peta, NewPeta),
+            flood(X,Y,PeopleValue, Flooded, NewFlooded),
+            print(NewFlooded),
             NextIndex #= PeopleIndex + 1,
-            go(X,Y,NextIndex,NewPeta)
+            go(X,Y,NextIndex,NewFlooded)
             );(
             move_next([X,Y], Key, [NextX,NextY]),
-            (is_in_grid(NextX,NextY), is_not_boulder_grid(NextX,NextY))-> go(NextX,NextY,PeopleIndex,Peta);go(X,Y,PeopleIndex,Peta)
+            (is_in_grid(NextX,NextY), is_not_boulder_grid(NextX,NextY))-> go(NextX,NextY,PeopleIndex,Flooded);go(X,Y,PeopleIndex,Flooded)
             )
         )
         )
     ).
 
-:- peta(Peta), go(0,0,0, Peta).
+:- go(0,0,0, []).
